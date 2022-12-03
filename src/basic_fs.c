@@ -1,5 +1,7 @@
 #define FUSE_USE_VERSION 31
 
+
+//e nevoide de libfuse instalat
 #include <fuse3/fuse.h>
 #include <string.h>
 #include <unistd.h>
@@ -42,7 +44,7 @@ static int basic_getattr(const char *path, struct stat *st,struct fuse_file_info
 	//fuse_file_info e unused la noi
 
 	//setam owner,group si timpul
-    st->st_uid = getuid();
+	st->st_uid = getuid();
 	st->st_gid = getgid();
 	//fisierul nostru fiind virtual, timpul de creare/modificare este acum
 	st->st_atime = time(NULL);
@@ -93,7 +95,7 @@ static int basic_readdir( const char *path, void *buffer, fuse_fill_dir_t filler
 	filler(buffer, "..", NULL, 0,0);
 
 	//adaugam singurul nostru fisier
-    filler(buffer, filename, NULL, 0, 0);
+	filler(buffer, filename, NULL, 0, 0);
 	
 	return 0;
 }
