@@ -1,1 +1,11 @@
+# Ignore all
+*
+# Unignore all files with extensions
+!*.*
+# Unignore all directories
+!*/
+# this combo ignores all files with no extensions
+# in our case it ignores compiled binaries
+
+# Ignore vscode folder
 .vscode
