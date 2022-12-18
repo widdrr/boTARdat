@@ -1,0 +1,1 @@
+gcc -Wall structure.c botardat.c `pkg-config --libs fuse3 libarchive` -o botardat
