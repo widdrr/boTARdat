@@ -1,1 +1,45 @@
 # boTARdat
+-----
+
+## TODO:
+- Choosing libraries
+  - [ ] Find a hash library
+  - [ ] Find an archive library
+- Directory Data Structure
+  - [ ] Design and implement node struct
+  - Implement basic functionality
+    - [ ] Create node
+    - [ ] Destroy node
+    - [ ] Find node by path
+    - [ ] Add node to parent
+    - [ ] Remove node from parent
+    - [ ] Temporary files for write
+- Archive IO
+  - [ ] Create structure from archive
+  - [ ] Recreate archive from structure
+- FUSE API
+  - Readonly
+    - [ ] getattr
+    - [ ] read
+    - [ ] readdir
+    - [ ] lseek
+  - Write operations
+    - [ ] write
+    - [ ] mknod
+    - [ ] mkdir
+    - [ ] truncate
+    - [ ] chmod
+    - [ ] chow
+    - [ ] utime
+    - [ ] rmdir
+    - [ ] rename
+  - Links support
+    - [ ] link
+    - [ ] symlink
+    - [ ] readlink
+    - [ ] unlink
+- Utility
+  - [ ] Makefile for easier build
+- User Experience
+  - [ ] Help prompt
+  - [ ] Come up with a meaning for boTARdat
