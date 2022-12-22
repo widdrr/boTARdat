@@ -27,6 +27,9 @@ typedef struct node{
 
 } node;
 
+extern node* root;
+extern archive* container;
+
 //creates and NULL initializes a new node 
 node* new_node();
 
@@ -46,7 +49,7 @@ node* find_node(node* root, char* path);
 //builds directory structure tree from archive with given name
 //should be called on global root and cantainer.
 //the mountpoint is required to set the mode
-int build_tree(node** root, archive** container, char* filename, char* mount);
+int build_tree(char* filename, char* mount);
 
 //deconstructs the directory structure tree and frees all memory
-void burn_tree(node* root);
+void burn_tree();

@@ -1,5 +1,8 @@
 #include "structure.h"
 
+node* root;
+archive* container;
+
 node* new_node(){
     
     node* new_node = malloc(sizeof(node));
@@ -63,11 +66,10 @@ node* find_node(node* start, char* path){
 
 }
 
-int build_tree(node** root_pt, archive** container_pt,char* filename,char* mount){
+int build_tree(char* filename,char* mount){
     
     //creates archive struct
-    *container_pt = archive_read_new();
-    archive* container = *container_pt;
+    container = archive_read_new();
     
     //sets support for uncompressed tar only
     archive_read_support_format_tar(container);
@@ -80,9 +82,7 @@ int build_tree(node** root_pt, archive** container_pt,char* filename,char* mount
     //populating root
     //root had to have been initialized 
 
-    *root_pt = new_node();
-
-    node* root = *root_pt;
+    root = new_node();
 
     root->path = strdup("/");
     root->name = strdup("/");
@@ -144,11 +144,9 @@ int build_tree(node** root_pt, archive** container_pt,char* filename,char* mount
         new_file->parent = parent; 
         HASH_ADD_STR(parent->children,name,new_file);
         new_file = new_node();
-        printf("%s has filetype %d\n",root->children->name,archive_entry_filetype(root->children->entry));
     }
     //free the extra node
     free_node(new_file);
-    printf("%d\n",archive_entry_filetype(root->children->entry));
     return 0;
 }
 

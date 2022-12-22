@@ -3,11 +3,9 @@
 
 int main(int argc, char* argv[]){
 
-    node* root = NULL;
-    archive* arch = NULL;
-
-    int err = build_tree(&root,&arch,argv[1],argv[2]);
-    printf("Err: %d\n",err);
-    printf("%d\n",archive_entry_filetype(root->children->entry));
+    if(!build_tree(argv[1],argv[2])){
+        return -1;
+    }
     burn_tree(root);
+    return 0;
 }
