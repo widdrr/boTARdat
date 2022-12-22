@@ -1,11 +1,13 @@
 # boTARdat
 -----
-
+basic opensource TAR directory access tool
+-----
 ## TODO:
 - Choosing libraries
   - [x] Find a hash library (uthash)
   - [x] Find an archive library (libarchive)
 - Directory Data Structure
+  - [x] Design and implement filesystem metadata
   - [x] Design and implement node struct
   - Implement basic functionality
     - [x] Create node
@@ -18,11 +20,18 @@
   - [x] Create structure from archive
   - [ ] Recreate archive from structure
 - FUSE API
+  - Technical
+    - [x] init
+    - [x] destroy
   - Readonly
     - [ ] getattr
     - [ ] read
     - [ ] readdir
     - [ ] lseek
+    - [ ] open
+    - [ ] opendir
+    - [ ] release
+    - [ ] releasedir
   - Write operations
     - [ ] write
     - [ ] mknod
@@ -40,6 +49,7 @@
     - [ ] unlink
 - Utility
   - [x] Bash script for easier build
-- User Experience
+- Program
   - [ ] Help prompt
+  - [x] Argument parsing (still work to do)
   - [x] Come up with a meaning for boTARdat

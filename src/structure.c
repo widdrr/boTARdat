@@ -66,29 +66,21 @@ node* find_node(node* start, char* path){
 
 }
 
-int build_tree(node* root, archive* container, char* filename,char* mount){
-    
-    //creates archive struct
-    container = archive_read_new();
-    
-    //sets support for uncompressed tar only
-    archive_read_support_format_tar(container);
+int build_tree(node* root, archive* container, int archive_fd, struct stat* mount_st){
 
     //opens the archive for reading
     //todo: handle errors
-    if(archive_read_open_filename(container,filename,BLOCK_SIZE) != ARCHIVE_OK)
+    if(archive_read_open_fd(container,archive_fd,BLOCK_SIZE) != ARCHIVE_OK){
         return archive_errno(container);
-
+    }
     //populating root
     //root had to have been initialized 
-    root = new_node();
 
     root->path = strdup("/");
     root->name = strdup("/");
 
     struct stat st;
-    stat(filename, &st);
-
+    fstat(archive_fd, &st);
 
     //create archive_entry for root from archive stats
     archive_entry_set_uid(root->entry,st.st_uid);
@@ -97,9 +89,8 @@ int build_tree(node* root, archive* container, char* filename,char* mount){
     archive_entry_set_size(root->entry,0);
 
     //only mode gets set from the mount directory
-    stat(mount,&st);
 
-    archive_entry_set_mode(root->entry,st.st_mode);
+    archive_entry_set_mode(root->entry,mount_st->st_mode);
 
     node* new_file = new_node();
     //as long as we can read archive headers, create and add nodes
@@ -127,17 +118,14 @@ int build_tree(node* root, archive* container, char* filename,char* mount){
         //it excludes the last /, which in the case of the root we want to keep
         if(parent_path[0] == '\0'){
             free(parent_path);
-            parent_path = strdup("/");
-            
+            parent_path = strdup("/");   
         }
-
         //search parent node
         node* parent = find_node(root,parent_path);
         
         if(parent == NULL){
             return -ENOENT;
         }
-
         //add the parent-child relationship
         new_file->parent = parent; 
         HASH_ADD_STR(parent->children,name,new_file);
@@ -145,7 +133,6 @@ int build_tree(node* root, archive* container, char* filename,char* mount){
     }
     //free the extra node
     free_node(new_file);
-    printf("Finishied building\n");
     return 0;
 }
 

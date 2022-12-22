@@ -45,7 +45,7 @@ node* find_node(node* root, char* path);
 //builds directory structure tree from archive with given name
 //should be called on global root and cantainer.
 //the mountpoint is required to set the mode
-int build_tree(node* root, archive* container, char* filename, char* mount);
+int build_tree(node* root, archive* container, int archive_fd, struct stat* mount_st);
 
 //deconstructs the directory structure tree and frees all memory
 void burn_tree(node* start);

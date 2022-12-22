@@ -6,12 +6,16 @@
 #include <fuse3/fuse_common.h>
 #include "structure.h"
 
+//this struct contains metadata for the directory structure
 typedef struct btrdt_data {
 
-    node* root;
-    archive* container;
-    char* archive_name;
-    char* mount_point;
+    node* root; //root node
+    archive* container; // archive struct for container
+    char* archive_name; // name of opened archive
+    int archive_fd; //file descriptor for opened archive
+    char* mount_name; //name of mount directory
+    struct stat mount_st; //struct stat for mount directory (once FUSE gets mounted it appears to be lost until unmount)
+    char* working_dir; //path for the working directory (might prove useful)
 
 } btrdt_data;
 
