@@ -30,7 +30,7 @@ typedef struct node{
 node* new_node();
 
 //deallocates memory for a node
-//node should be completely isolated
+//node should be completely isolated so call remove_child before
 void free_node(node* node);
 
 //add child node to parent node
@@ -42,9 +42,8 @@ void remove_child(node* child);
 //returns node for given path starting from given root
 node* find_node(node* root, char* path);
 
-//builds directory structure tree from archive with given name
-//should be called on global root and cantainer.
-//the mountpoint is required to set the mode
+//builds directory structure tree from archive with given file descriptor
+//struct stat for mount point is used to set the root's mode
 int build_tree(node* root, archive* container, int archive_fd, struct stat* mount_st);
 
 //deconstructs the directory structure tree and frees all memory

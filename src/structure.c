@@ -33,6 +33,7 @@ void add_child(node* parent, node* child){
 }
 
 void remove_child(node* rem_node){
+    
     if(rem_node->parent == NULL)
         return;
     HASH_DEL(rem_node->parent->children,rem_node);
@@ -41,19 +42,21 @@ void remove_child(node* rem_node){
 
 node* find_node(node* start, char* path){
 
-    //printf("Searching for path %s\n",path);
+    //reaching the end of the path means we found our node
     if(strcmp(path,"/") == 0)
         return start;
 
-    //could have errors here, add handling
+    //otherwise, extract everything between the first and second '/'
     char* name_end = strchr(path + 1,'/');
     char* name;
+
+    //handling the case when there is no second /, such as /my_file
     if(name_end == NULL){
         name = strdup(path + 1);
         name_end = strdup("/");
     }
     else{
-    name = strndup(path + 1, name_end - path - 1);
+        name = strndup(path + 1, name_end - path - 1);
     }
 
     //searching for the node in the hash table
