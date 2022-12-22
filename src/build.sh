@@ -1,1 +1,1 @@
-gcc -Wall structure.c botardat.c `pkg-config --cflags --libs fuse3` `pkg-config --libs libarchive` -o botardat
+gcc -Wall structure.c api.c botardat.c `pkg-config --cflags --libs fuse3` `pkg-config --libs libarchive` -o botardat

@@ -1,7 +1,7 @@
 #include "structure.h"
-
-node* root;
-archive* container;
+#include <string.h>
+#include <errno.h>
+#include <stdio.h>
 
 node* new_node(){
     
@@ -66,7 +66,7 @@ node* find_node(node* start, char* path){
 
 }
 
-int build_tree(char* filename,char* mount){
+int build_tree(node* root, archive* container, char* filename,char* mount){
     
     //creates archive struct
     container = archive_read_new();
@@ -81,7 +81,6 @@ int build_tree(char* filename,char* mount){
 
     //populating root
     //root had to have been initialized 
-
     root = new_node();
 
     root->path = strdup("/");
@@ -89,6 +88,7 @@ int build_tree(char* filename,char* mount){
 
     struct stat st;
     stat(filename, &st);
+
 
     //create archive_entry for root from archive stats
     archive_entry_set_uid(root->entry,st.st_uid);
@@ -107,9 +107,7 @@ int build_tree(char* filename,char* mount){
 
         //populate path and name
         const char* path = archive_entry_pathname(new_file->entry);
-        
         size_t size = strlen(path);
-
 
         //if entry is a directory, it ends with '/' and we need to remove it
         if(archive_entry_filetype(new_file->entry) == AE_IFDIR){
@@ -152,16 +150,14 @@ int build_tree(char* filename,char* mount){
 
 void burn_tree(node* start){
 
-    printf("Trying to delete %s\n",start->path);
-
-    //if file is a directory, recurse into every child first
+    //if node is a directory, recurse into every child first
     if(archive_entry_filetype(start->entry) == AE_IFDIR){
-        printf("Deleting children of %s\n",start->path);
+
         for(node* child = start->children; child != NULL; child = child->hh.next){
             burn_tree(child);
         }
     }
-    printf("delete entry %s\n",start->path);
+    //can safely delete node now
     remove_child(start);
     free_node(start);
 }
