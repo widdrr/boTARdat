@@ -145,6 +145,7 @@ int build_tree(node* root, archive* container, char* filename,char* mount){
     }
     //free the extra node
     free_node(new_file);
+    printf("Finishied building\n");
     return 0;
 }
 
