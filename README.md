@@ -3,19 +3,19 @@
 
 ## TODO:
 - Choosing libraries
-  - [ ] Find a hash library
-  - [ ] Find an archive library
+  - [ x ] Find a hash library (uthash)
+  - [ x ] Find an archive library (libarchive)
 - Directory Data Structure
-  - [ ] Design and implement node struct
+  - [ x ] Design and implement node struct
   - Implement basic functionality
-    - [ ] Create node
-    - [ ] Destroy node
-    - [ ] Find node by path
-    - [ ] Add node to parent
-    - [ ] Remove node from parent
+    - [ x ] Create node
+    - [ x ] Destroy node
+    - [ x ] Find node by path
+    - [ x ] Add node to parent
+    - [ x ] Remove node from parent
     - [ ] Temporary files for write
 - Archive IO
-  - [ ] Create structure from archive
+  - [ x ] Create structure from archive
   - [ ] Recreate archive from structure
 - FUSE API
   - Readonly
