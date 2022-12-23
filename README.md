@@ -24,19 +24,14 @@ basic opensource TAR directory access tool
     - [x] init
     - [x] destroy
   - Readonly
-    - [ ] getattr
+    - [x] getattr
     - [ ] read
-    - [ ] readdir
+    - [x] readdir
     - [ ] lseek
-    - [ ] open
-    - [ ] opendir
-    - [ ] release
-    - [ ] releasedir
   - Write operations
     - [ ] write
     - [ ] mknod
     - [ ] mkdir
-    - [ ] truncate
     - [ ] chmod
     - [ ] chow
     - [ ] utime
