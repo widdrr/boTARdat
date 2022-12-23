@@ -33,6 +33,13 @@ void add_child(node* parent, node* child){
     //todo check if child already exists
     child->parent = parent;
     HASH_ADD_STR(parent->children,name,child);
+    //if child is a directory, increase the link count of parent, because of '..'
+    if(archive_entry_filetype(child->entry) == AE_IFDIR){
+        if(strcmp(parent->name,"/") == 0){
+        printf("Added child to root, it has %d links\n",archive_entry_nlink(parent->entry));
+        }   
+        archive_entry_set_nlink(parent->entry,archive_entry_nlink(parent->entry) + 1);
+    }
 }
 
 void remove_child(node* rem_node){
@@ -96,8 +103,9 @@ int build_tree(node* root, archive* container, int archive_fd, struct stat* moun
     archive_entry_set_gid(root->entry,st.st_gid);
     archive_entry_set_mtime(root->entry,st.st_mtime,0);
     archive_entry_set_size(root->entry,0);
+    archive_entry_set_nlink(root->entry,2);
 
-    //only mode gets set from the mount directory
+    //only set mode from mount directory
     archive_entry_set_mode(root->entry,mount_st->st_mode);
 
     node* new_file = new_node();
@@ -108,9 +116,14 @@ int build_tree(node* root, archive* container, int archive_fd, struct stat* moun
         const char* path = archive_entry_pathname(new_file->entry);
         size_t size = strlen(path);
 
+        //all files have 1 hardlink by default, their name.
+        archive_entry_set_nlink(new_file->entry,1);
+
         //if entry is a directory, it ends with '/' and we need to remove it
+        //we also set the hardlink count to 2 while we're at it, since directories have '.'
         if(archive_entry_filetype(new_file->entry) == AE_IFDIR){
             --size;
+            archive_entry_set_nlink(new_file->entry,2); 
         }
     
         //copy file path and prepend '/'
@@ -130,15 +143,13 @@ int build_tree(node* root, archive* container, int archive_fd, struct stat* moun
         }
         //search parent node
         node* parent = find_node(root,parent_path);
-        
         free(parent_path);
 
         if(parent == NULL){
             return -ENOENT;
         }
         //add the parent-child relationship
-        new_file->parent = parent; 
-        HASH_ADD_STR(parent->children,name,new_file);
+        add_child(parent,new_file);
         new_file = new_node();
     }
     //free the extra node

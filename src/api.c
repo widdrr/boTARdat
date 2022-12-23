@@ -56,10 +56,14 @@ int btrdt_getattr(const char *path, struct stat* st, struct fuse_file_info* fi){
         return -ENOENT;
     }
 
+    //extracting all relevant values;
+    st->st_gid = archive_entry_gid(found->entry);
+    st->st_uid = archive_entry_uid(found->entry);
     st->st_mode = archive_entry_mode(found->entry);
-    if(archive_entry_filetype(found->entry) == AE_IFDIR){
-        st->st_nlink +=2;
-    }
+    st->st_size = archive_entry_size(found->entry);
+    st->st_nlink = archive_entry_nlink(found->entry);
+    st->st_mtim.tv_sec = archive_entry_mtime(found->entry);
+    
     return 0;
 }
 
