@@ -8,6 +8,7 @@
 static const struct fuse_operations btrdt_op ={
     .init = btrdt_init,
     .destroy = btrdt_destroy,
+    .readdir = btrdt_readdir,
     
 };
 

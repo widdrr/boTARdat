@@ -40,7 +40,7 @@ void add_child(node* parent, node* child);
 void remove_child(node* child);
 
 //returns node for given path starting from given root
-node* find_node(node* root, char* path);
+node* find_node(node* root, const char* path);
 
 //builds directory structure tree from archive with given file descriptor
 //struct stat for mount point is used to set the root's mode

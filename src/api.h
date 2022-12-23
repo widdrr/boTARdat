@@ -27,4 +27,7 @@ void* btrdt_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
 //we will clean up our filesystem.
 void btrdt_destroy(void* private_data);
 
+int btrdt_readdir(const char * path, void * buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info * fi, enum fuse_readdir_flags flags);
+
+int btrdt_getattr(const char *, struct stat *, struct fuse_file_info *fi);
 
