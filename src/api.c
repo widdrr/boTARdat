@@ -1,5 +1,6 @@
 #include "api.h"
 #include "structure.h"
+#include <errno.h>
 
 void* btrdt_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
 
@@ -44,4 +45,24 @@ void btrdt_destroy(void* private_data){
     close(fs_data->archive_fd);
     //free the data struct
     free(fs_data);
+}
+
+int btrdt_readdir(const char * path, void * buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info * fi, enum fuse_readdir_flags flags){
+    printf("a intrat in functie %s\n",path);
+    btrdt_data *fs_data = fuse_get_context()->private_data;
+
+    node *dir = find_node(fs_data->root,path);
+
+    if(dir==NULL){
+        return -ENOENT;
+    }
+
+    filler(buffer, ".", NULL, 0,0);
+	filler(buffer, "..", NULL, 0,0);
+
+    for(node *child = dir->children;child!=NULL;child=child->hh.next){
+        filler(buffer,child->name,NULL,0,0);
+    }
+    
+    return 0;
 }

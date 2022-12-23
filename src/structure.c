@@ -40,7 +40,7 @@ void remove_child(node* rem_node){
     rem_node->parent = NULL;
 }
 
-node* find_node(node* start, char* path){
+node* find_node(node* start, const char* path){
 
     //reaching the end of the path means we found our node
     if(strcmp(path,"/") == 0)
