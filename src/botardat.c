@@ -8,6 +8,7 @@
 static const struct fuse_operations btrdt_op ={
     .init = btrdt_init,
     .destroy = btrdt_destroy,
+    .getattr = btrdt_getattr,
     .readdir = btrdt_readdir,
     
 };
@@ -51,13 +52,16 @@ int main(int argc, char* argv[]){
 
     //initializing our metadata struct
     btrdt_data* fs_data = malloc(sizeof(btrdt_data));
+    fs_data->archive_name = NULL;
+    fs_data->mount_name = NULL;
     fs_data->working_dir = getcwd(NULL,0);
 
     //fuse_opt_parse automatically parses the args using a configuration struct and a parsing function
     fuse_opt_parse(&args,fs_data,NULL,btrdt_opt_proc);
-    
     if(fuse_main(args.argc,args.argv,&btrdt_op,fs_data)){
         return errno;
     }
+
+    fuse_opt_free_args(&args);
     return 0;
 }
