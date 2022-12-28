@@ -25,7 +25,7 @@ basic opensource TAR directory access tool
     - [x] destroy
   - Readonly
     - [x] getattr
-    - [ ] read
+    - [x] read
     - [x] readdir
     - [ ] lseek
   - Write operations

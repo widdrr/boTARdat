@@ -35,9 +35,6 @@ void add_child(node* parent, node* child){
     HASH_ADD_STR(parent->children,name,child);
     //if child is a directory, increase the link count of parent, because of '..'
     if(archive_entry_filetype(child->entry) == AE_IFDIR){
-        if(strcmp(parent->name,"/") == 0){
-        printf("Added child to root, it has %d links\n",archive_entry_nlink(parent->entry));
-        }   
         archive_entry_set_nlink(parent->entry,archive_entry_nlink(parent->entry) + 1);
     }
 }
