@@ -82,10 +82,13 @@ node* find_node(node* start, const char* path){
     return found;
 }
 
-int build_tree(node* root, archive* container, int archive_fd, struct stat* mount_st){
+int build_tree(node* root, int archive_fd, struct stat* mount_st){
 
+    struct archive *container = archive_read_new();
+    archive_read_support_format_tar(container);
     //opens the archive for reading
     //todo: handle errors
+
     if(archive_read_open_fd(container,archive_fd,BLOCK_SIZE) != ARCHIVE_OK){
         return archive_errno(container);
     }
@@ -154,6 +157,8 @@ int build_tree(node* root, archive* container, int archive_fd, struct stat* moun
     }
     //free the extra node
     free_node(new_file);
+    archive_read_free(container);
+    lseek(archive_fd,0,SEEK_SET);
     return 0;
 }
 

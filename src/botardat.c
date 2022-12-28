@@ -10,6 +10,7 @@ static const struct fuse_operations btrdt_op ={
     .destroy = btrdt_destroy,
     .getattr = btrdt_getattr,
     .readdir = btrdt_readdir,
+    .read = btrdt_read,
     
 };
 
