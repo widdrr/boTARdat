@@ -24,6 +24,7 @@ typedef struct node{
 
     UT_hash_handle hh; // this makes node hashable
 
+    int modificat;
 } node;
 
 //creates and NULL initializes a new node 

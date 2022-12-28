@@ -85,3 +85,74 @@ int btrdt_readdir(const char* path, void* buffer, fuse_fill_dir_t filler, off_t 
     
     return 0;
 }
+int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi )
+{
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+    node* found = find_node(fs_data->root,path);
+    int ret = -1;
+    if(found == NULL)
+    {
+        return -ENOENT;
+    }
+    struct stat* st;
+    node* nod;
+    const char* realpath;
+    if(found->modificat)
+    {
+        int g = open(found->path,O_RDONLY);
+        if(g == -1)
+        {
+            return 0 - errno;
+        }
+        if((ret = pread(g,buffer,size,offset))==-1)
+        {
+            close(g);
+            return 0 - errno;
+        }
+        close(g);
+    }
+    else
+    {
+        struct archive *arc;
+        struct archive *arc2 = archive_read_new();
+        struct archive_entry *entry;
+        int ret2;
+        int arc_ret;
+        realpath = archive_entry_pathname(found->entry);
+        if (arc2 == NULL)
+        {
+			return -ENOMEM;
+		}
+        ret2 = archive_read_open_fd(arc2,archive_fd,BLOCK_SIZE);
+        if(ret2 != ARCHIVE_OK)
+            return -EIO;
+        while((ret2 = archive_read_next_header(arc2,&entry))==ARCHIVE_OK)
+        {
+            const char* name;
+            name = archive_entry_pathname(entry);
+            if(strcmp(realpath,name) == 0)
+            {
+                void* trash;
+                while(offset)
+                {
+                    int skip;
+                    if(offset > 4096)
+                        skip = offset;
+                    else
+                        skip = 4096;
+                    ret = archive_read_data(arc2,trash,skip);
+                    offset = offset - skip;
+                }   
+                free(trash);
+                if(offset)
+                    break;
+                ret = archive_read_data(arc2,buffer,size);
+                break;
+            }
+            archive_read_data_skip(arc2);
+        }
+        archive_read_free(arc2);
+        lseek(archive_fd, 0, SEEK_SET);
+    }
+    return ret;
+}

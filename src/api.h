@@ -33,3 +33,4 @@ int btrdt_getattr(const char* path, struct stat* st, struct fuse_file_info* fi);
 //operation that returns the names of all contents of a directory in a buffer
 int btrdt_readdir(const char* path, void* buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi, enum fuse_readdir_flags flags);
 
+int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi );
