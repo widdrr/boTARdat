@@ -221,3 +221,20 @@ int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_inf
 
     return 0;
 }
+
+int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, struct fuse_file_info *fi)
+{
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL)
+    {
+        return -ENOENT;
+    }
+    int temp_file,fh;
+    //create a temp file for the current node, if it already has one then it stops
+    move_to_disk(found,fs_data->archive_fd);
+    fh = open(found,O_WRONLY);
+    pwrite(fh,buf,size,offset);
+    
+    return 0;
+}

@@ -15,6 +15,7 @@ static const struct fuse_operations btrdt_op ={
     .utimens = btrdt_utimens,
     .chmod = btrdt_chmod,
     .chown = btrdt_chown,
+    .write = btrdt_write,
     
 };
 
