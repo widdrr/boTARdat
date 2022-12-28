@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 node* new_node(){
     
@@ -12,7 +13,7 @@ node* new_node(){
     new_node->path = NULL;
     new_node->name = NULL;
     new_node->entry = archive_entry_new();
-    new_node->temp = NULL;
+    new_node->tempf_name = NULL;
     memset(&new_node->hh,0,sizeof(UT_hash_handle));
 
     return new_node;
@@ -23,7 +24,7 @@ void free_node(node* die_node){
     free(die_node->path);
     free(die_node->name);
     archive_entry_free(die_node->entry);
-    free(die_node->temp);
+    free(die_node->tempf_name);
 
     free(die_node);
 }
@@ -39,12 +40,93 @@ void add_child(node* parent, node* child){
     }
 }
 
-void remove_child(node* rem_node){
+void remove_child(node* child){
     
-    if(rem_node->parent == NULL)
+    if(child->parent == NULL)
         return;
-    HASH_DEL(rem_node->parent->children,rem_node);
-    rem_node->parent = NULL;
+    HASH_DEL(child->parent->children,child);
+    child->parent = NULL;
+}
+
+int read_entry(node* rd_node, int container_fd, char* buffer, size_t size, off_t offset){
+    
+    int read_size = -ENOENT;
+    const char* realpath = archive_entry_pathname(rd_node->entry);
+    struct archive_entry *entry;
+    
+    struct archive *arc = archive_read_new();
+    archive_read_support_format_tar(arc);
+
+    if(archive_read_open_fd(arc,container_fd,BLOCK_SIZE) != ARCHIVE_OK){
+        return -archive_errno(arc);
+    }
+    //we search the archive sequentially until we find a matching entry
+    //there seems to be no convenient way to get around this
+    while(archive_read_next_header(arc,&entry)==ARCHIVE_OK){
+        const char* path;
+        path = archive_entry_pathname(entry);
+        
+        if(strcmp(realpath,path) == 0){
+            //if reading bytes outside the file, don't
+            if(offset > archive_entry_size(entry)){
+                read_size = 0;
+                break;
+            }
+            //skip the offset by reading and discarding
+            //also no convenient way around this.
+            void* trash = malloc(IO_BLOCK);
+            while(offset){
+                int skip;
+                if(offset > IO_BLOCK)
+                    skip = IO_BLOCK;
+                else
+                    skip = offset;
+                //todo handle errors
+                archive_read_data(arc,trash,skip);
+                offset = offset - skip;
+            }   
+            free(trash);
+            //todo handle errors
+            read_size = archive_read_data(arc,buffer,size);
+            break;
+        }
+        archive_read_data_skip(arc);
+    }
+    //clean up and reset pointer
+    archive_read_free(arc);
+    lseek(container_fd, 0, SEEK_SET);
+    return read_size;
+}
+
+void move_to_disk(node* mv_node, int container_fd){
+
+    //if temporary file already exists do nothing
+    if(mv_node->tempf_name != NULL){
+        return;
+    }
+    //we initialize the name with the template
+    mv_node->tempf_name = strdup(FILE_TEMPLATE);
+    //we generate a unique file name, create the file, and open it.
+    //the filename is modified in the process
+    int temp_fd = mkstemp(mv_node->tempf_name);
+
+    //we copy the original contents to our new file.
+    size_t size = archive_entry_size(mv_node->entry);
+    char* copy_buffer = malloc(IO_BLOCK);
+    off_t offset = 0;
+    while(size > 0){
+        //todo handle errors
+        int read_size;
+        while((read_size = read_entry(mv_node, container_fd, copy_buffer, IO_BLOCK, offset)) > 0){
+            
+            offset += read_size;
+            size -= read_size;
+            write(temp_fd,copy_buffer,read_size);
+        }
+    }
+    //clean memory
+    free(copy_buffer);
+    close(temp_fd);
 }
 
 node* find_node(node* start, const char* path){
@@ -72,8 +154,10 @@ node* find_node(node* start, const char* path){
 
     if(found == NULL)
         return found;
+    //cleaning up
     found = find_node(found,name_end);
     free(name);
+
     if(strcmp(name_end,"/") == 0)
         free(name_end);
     return found;
@@ -154,6 +238,7 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
     }
     //free the extra node
     free_node(new_file);
+    //free archive and reset pointer
     archive_read_free(container);
     lseek(archive_fd,0,SEEK_SET);
     return 0;
