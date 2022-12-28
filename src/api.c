@@ -1,6 +1,8 @@
 #include "api.h"
 #include "structure.h"
 #include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 void* btrdt_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
 
@@ -29,8 +31,6 @@ void btrdt_destroy(void* private_data){
     //deconstruct our structure
     burn_tree(fs_data->root);
 
-    //free archive
-    archive_free(fs_data->container);
 
     //free other fields
     free(fs_data->archive_name);
@@ -82,6 +82,7 @@ int btrdt_readdir(const char* path, void* buffer, fuse_fill_dir_t filler, off_t 
     return 0;
 }
 int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi ){
+    
     btrdt_data* fs_data = fuse_get_context()->private_data;
     node* found = find_node(fs_data->root,path);
     int read_size = -ENOENT;
@@ -93,24 +94,27 @@ int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct
     }
     realpath = archive_entry_pathname(found->entry);
     struct archive *arc = archive_read_new();
+    archive_read_support_format_tar(arc);
 
-    if(archive_read_open_fd(arc,fs_data->archive_fd,BLOCK_SIZE) != ARCHIVE_OK)
+    if(archive_read_open_fd(arc,fs_data->archive_fd,BLOCK_SIZE) != ARCHIVE_OK){
         return -archive_errno(arc);
-    
+    }
     while(archive_read_next_header(arc,&entry)==ARCHIVE_OK){
         const char* path;
         path = archive_entry_pathname(entry);
+        
         if(strcmp(realpath,path) == 0){
-            if(offset + size > archive_entry_size(entry)){
-                return 0;
+            if(offset > archive_entry_size(entry)){
+                read_size = 0;
+                break;
             }
             void* trash = malloc(IO_BLOCK);
             while(offset){
                 int skip;
                 if(offset > IO_BLOCK)
-                    skip = offset;
-                else
                     skip = IO_BLOCK;
+                else
+                    skip = offset;
                 archive_read_data(arc,trash,skip);
                 //warnings
                 offset = offset - skip;

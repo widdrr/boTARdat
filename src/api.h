@@ -10,7 +10,6 @@
 typedef struct btrdt_data {
 
     node* root; //root node
-    archive* container; // archive struct for container
     char* archive_name; // name of opened archive
     int archive_fd; //file descriptor for opened archive
     char* mount_name; //name of mount directory
