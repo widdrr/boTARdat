@@ -24,6 +24,9 @@ void free_node(node* die_node){
     free(die_node->path);
     free(die_node->name);
     archive_entry_free(die_node->entry);
+    if(die_node->tempf_name != NULL){
+        unlink(die_node->tempf_name);
+    }
     free(die_node->tempf_name);
 
     free(die_node);
@@ -111,6 +114,10 @@ void move_to_disk(node* mv_node, int container_fd){
     int temp_fd = mkstemp(mv_node->tempf_name);
 
     //we copy the original contents to our new file.
+    //NOTE: This is very inneficient, because every time we read a new block
+    //We search the entire archive for the entry again
+    //Due to the nature of the operation we can greatly speed it up.
+    //This requires writing specialized code for copying the entire contents of a file.
     size_t size = archive_entry_size(mv_node->entry);
     char* copy_buffer = malloc(IO_BLOCK);
     off_t offset = 0;
