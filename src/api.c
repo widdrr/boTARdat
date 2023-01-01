@@ -99,12 +99,14 @@ int btrdt_mknod(const char *path, mode_t mode, dev_t dev){
     
     btrdt_data* fs_data = fuse_get_context()->private_data;
 
+    //if file exists, error
     if(find_node(fs_data->root,path) != NULL){
         return -EEXIST;
     }
 
     node* new_file = new_node();
 
+    //we set path and name
     new_file->path = strdup(path);
     new_file->name = strrchr(new_file->path,'/') + 1;
 
@@ -112,13 +114,17 @@ int btrdt_mknod(const char *path, mode_t mode, dev_t dev){
         return -errno;
     }
 
+    //set all relevant archive entry stat values
     archive_entry_set_pathname(new_file->entry, new_file->path + 1);
     archive_entry_set_uid(new_file->entry,getuid());
     archive_entry_set_gid(new_file->entry,getgid());
     archive_entry_set_mtime(new_file->entry,time(NULL),0);
     archive_entry_set_mode(new_file->entry,mode);
+    archive_entry_set_size(new_file->entry,0);
+    archive_entry_set_nlink(new_file->entry,1);
     archive_entry_set_dev(new_file->entry,dev);
 
+    //since this is a new file, we have to create a backing temp on disk for content
     move_to_disk(new_file,-1);
 
     return 0;
@@ -133,6 +139,7 @@ int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_
         return -ENOENT;
     }
 
+    //set last access and last modified times
     archive_entry_set_atime(found->entry,times[0].tv_sec,0);
     archive_entry_set_mtime(found->entry,times[1].tv_sec,0);
 

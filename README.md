@@ -30,11 +30,11 @@ basic opensource TAR directory access tool
     - [ ] lseek
   - Write operations
     - [ ] write
-    - [ ] mknod
+    - [x] mknod
     - [ ] mkdir
     - [ ] chmod
     - [ ] chow
-    - [ ] utime
+    - [x] utime
     - [ ] rmdir
     - [ ] rename
   - Links support
