@@ -72,9 +72,11 @@ int btrdt_readdir(const char* path, void* buffer, fuse_fill_dir_t filler, off_t 
         return -ENOENT;
     }
 
+    //every directory has . and .. as entries by default
     filler(buffer, ".", NULL, 0,0);
 	filler(buffer, "..", NULL, 0,0);
 
+    //add each child
     for(node* child = dir->children; child!=NULL; child=child->hh.next){
         filler(buffer,child->name,NULL,0,0);
     }
@@ -85,48 +87,10 @@ int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct
     
     btrdt_data* fs_data = fuse_get_context()->private_data;
     node* found = find_node(fs_data->root,path);
-    int read_size = -ENOENT;
-    const char* realpath;
-    struct archive_entry *entry;
 
     if(found == NULL){
         return -ENOENT;
     }
-    realpath = archive_entry_pathname(found->entry);
-    struct archive *arc = archive_read_new();
-    archive_read_support_format_tar(arc);
 
-    if(archive_read_open_fd(arc,fs_data->archive_fd,BLOCK_SIZE) != ARCHIVE_OK){
-        return -archive_errno(arc);
-    }
-    while(archive_read_next_header(arc,&entry)==ARCHIVE_OK){
-        const char* path;
-        path = archive_entry_pathname(entry);
-        
-        if(strcmp(realpath,path) == 0){
-            if(offset > archive_entry_size(entry)){
-                read_size = 0;
-                break;
-            }
-            void* trash = malloc(IO_BLOCK);
-            while(offset){
-                int skip;
-                if(offset > IO_BLOCK)
-                    skip = IO_BLOCK;
-                else
-                    skip = offset;
-                archive_read_data(arc,trash,skip);
-                //warnings
-                offset = offset - skip;
-            }   
-            free(trash);
-            read_size = archive_read_data(arc,buffer,size);
-            //warnings
-            break;
-        }
-        archive_read_data_skip(arc);
-    }
-    archive_read_free(arc);
-    lseek(fs_data->archive_fd, 0, SEEK_SET);
-    return read_size;
+    return read_entry(found, fs_data->archive_fd, buffer, size, offset);
 }

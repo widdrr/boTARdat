@@ -7,7 +7,8 @@
 //libarchive determines the block_size automatically
 //this is the fallback value    
 #define BLOCK_SIZE 10240
-#define IO_BLOCK 4096
+#define IO_BLOCK 8192
+#define FILE_TEMPLATE P_tmpdir"/botardat-XXXXXX"
 
 typedef struct archive archive;
 typedef struct archive_entry archive_entry;
@@ -21,7 +22,7 @@ typedef struct node{
     char* name; //basename of node
 
     archive_entry* entry; //archive header data
-    char* temp; //location of temporary file for writing
+    char* tempf_name; //path of temporary file for writing
 
     UT_hash_handle hh; // this makes node hashable
 
@@ -39,6 +40,11 @@ void add_child(node* parent, node* child);
 
 //removes child from node parent
 void remove_child(node* child);
+
+int read_entry(node* rd_node, int container_fd, char* buffer, size_t size, off_t offset);
+
+//creates a temporary file on disk and moves all contents
+void move_to_disk(node* mv_node, int container_fd);
 
 //returns node for given path starting from given root
 node* find_node(node* root, const char* path);
