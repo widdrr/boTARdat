@@ -32,4 +32,12 @@ int btrdt_getattr(const char* path, struct stat* st, struct fuse_file_info* fi);
 //operation that returns the names of all contents of a directory in a buffer
 int btrdt_readdir(const char* path, void* buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi, enum fuse_readdir_flags flags);
 
+//operation that reads the request bytes from given offset into the buffer
 int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi);
+
+//operation that creates new file for give path and mode
+int btrdt_mknod(const char *path, mode_t mode, dev_t dev);
+
+//opertion that changes access and modified times for gived fiel
+int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_file_info *fi);
+

@@ -38,12 +38,17 @@ void free_node(node* node);
 //add child node to parent node
 void add_child(node* parent, node* child);
 
+//adds child node by path
+int add_path(node* root,node* child);
+
 //removes child from node parent
 void remove_child(node* child);
 
+//reads from a node's entry
 int read_entry(node* rd_node, int container_fd, char* buffer, size_t size, off_t offset);
 
 //creates a temporary file on disk and moves all contents
+//if only creation is desired, pass -1 to fd
 void move_to_disk(node* mv_node, int container_fd);
 
 //returns node for given path starting from given root

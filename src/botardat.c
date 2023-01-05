@@ -11,6 +11,8 @@ static const struct fuse_operations btrdt_op ={
     .getattr = btrdt_getattr,
     .readdir = btrdt_readdir,
     .read = btrdt_read,
+    .mknod = btrdt_mknod,
+    .utimens = btrdt_utimens,
     
 };
 
@@ -59,6 +61,9 @@ int main(int argc, char* argv[]){
 
     //fuse_opt_parse automatically parses the args using a configuration struct and a parsing function
     fuse_opt_parse(&args,fs_data,NULL,btrdt_opt_proc);
+    
+    //for now we force FUSE to run in single thread mode, multithread support to be determined
+    fuse_opt_add_arg(&args,"-s");   
     if(fuse_main(args.argc,args.argv,&btrdt_op,fs_data)){
         return errno;
     }

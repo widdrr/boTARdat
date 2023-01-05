@@ -21,8 +21,8 @@ node* new_node(){
 
 void free_node(node* die_node){
     
+    //since name should always be a substring of path, we only need to free path
     free(die_node->path);
-    free(die_node->name);
     archive_entry_free(die_node->entry);
     if(die_node->tempf_name != NULL){
         unlink(die_node->tempf_name);
@@ -41,6 +41,28 @@ void add_child(node* parent, node* child){
     if(archive_entry_filetype(child->entry) == AE_IFDIR){
         archive_entry_set_nlink(parent->entry,archive_entry_nlink(parent->entry) + 1);
     }
+}
+
+int add_path(node* root, node*child){
+
+    //get path for parent 
+    char* parent_path = strndup(child->path, child->name - child->path - 1);
+    //it excludes the last /, which in the case of the root we want to keep
+    if(parent_path[0] == '\0'){
+        free(parent_path);
+        parent_path = strdup("/");   
+    }
+    //search parent node
+    node* parent = find_node(root,parent_path);
+    free(parent_path);
+
+    if(parent == NULL){
+        return -ENOENT;
+    }
+    //add the parent-child relationship
+    add_child(parent,child);
+
+    return 0;
 }
 
 void remove_child(node* child){
@@ -112,7 +134,10 @@ void move_to_disk(node* mv_node, int container_fd){
     //we generate a unique file name, create the file, and open it.
     //the filename is modified in the process
     int temp_fd = mkstemp(mv_node->tempf_name);
-
+    if(container_fd == -1){
+        close(temp_fd);
+        return;
+    }
     //we copy the original contents to our new file.
     //NOTE: This is very inneficient, because every time we read a new block
     //We search the entire archive for the entry again
@@ -184,7 +209,7 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
     //root had to have been initialized 
 
     root->path = strdup("/");
-    root->name = strdup("/");
+    root->name = root->path;
 
     struct stat st;
     fstat(archive_fd, &st);
@@ -222,25 +247,11 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
         new_file->path[0] = '/';
         strncpy(new_file->path + 1, path,size);
 
-        char* slash_pos = strrchr(new_file->path,'/');
-        new_file->name = strdup(slash_pos + 1);
+        new_file->name = strrchr(new_file->path,'/') + 1;
 
-        //get path for parent 
-        char* parent_path = strndup(new_file->path, slash_pos - new_file->path);
-        //it excludes the last /, which in the case of the root we want to keep
-        if(parent_path[0] == '\0'){
-            free(parent_path);
-            parent_path = strdup("/");   
+        if(add_path(root,new_file) != 0){
+            return -errno;
         }
-        //search parent node
-        node* parent = find_node(root,parent_path);
-        free(parent_path);
-
-        if(parent == NULL){
-            return -ENOENT;
-        }
-        //add the parent-child relationship
-        add_child(parent,new_file);
         new_file = new_node();
     }
     //free the extra node
