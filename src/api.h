@@ -43,3 +43,4 @@ int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_
 
 int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
 
+int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_info *fi);

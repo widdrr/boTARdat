@@ -159,3 +159,18 @@ int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 
     return 0;
 }
+
+int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_info *fi)
+{
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+    printf("%d, %d\n",owner, group);
+    archive_entry_set_uid(found->entry, owner);
+    archive_entry_set_gid(found->entry,group);
+
+    return 0;
+}
