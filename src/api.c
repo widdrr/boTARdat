@@ -145,3 +145,35 @@ int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_
 
     return 0;
 }
+
+int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    archive_entry_set_mode(found->entry, mode);
+
+    return 0;
+}
+
+int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_info *fi)
+{
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    //-1 represents missing parameter therefore it does not require change
+    if(owner != -1)
+        archive_entry_set_uid(found->entry, owner);
+    if(group != -1)
+        archive_entry_set_gid(found->entry, group);
+
+    return 0;
+}

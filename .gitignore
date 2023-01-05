@@ -12,3 +12,6 @@
 
 # Ignore vscode folder
 .vscode
+
+# Ignore testing folder
+test/

@@ -33,8 +33,8 @@ basic opensource TAR directory access tool
     - [ ] write
     - [x] mknod
     - [ ] mkdir
-    - [ ] chmod
-    - [ ] chow
+    - [x] chmod
+    - [x] chow
     - [x] utime
     - [ ] unlink
     - [ ] rmdir

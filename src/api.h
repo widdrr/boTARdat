@@ -38,6 +38,11 @@ int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct
 //operation that creates new file for give path and mode
 int btrdt_mknod(const char *path, mode_t mode, dev_t dev);
 
-//opertion that changes access and modified times for gived fiel
+//opertion that changes access and modified times for gived file
 int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_file_info *fi);
 
+//operation that changes file permisions
+int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
+
+//operation that changes owner id and/or group id
+int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_info *fi);
