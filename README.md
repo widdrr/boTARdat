@@ -16,6 +16,7 @@ basic opensource TAR directory access tool
     - [x] Add node to parent
     - [x] Remove node from parent
     - [x] Temporary files for write
+    - [x] Read from file
 - Archive IO
   - [x] Create structure from archive
   - [ ] Recreate archive from structure
@@ -35,13 +36,13 @@ basic opensource TAR directory access tool
     - [ ] chmod
     - [ ] chow
     - [x] utime
+    - [ ] unlink
     - [ ] rmdir
     - [ ] rename
   - Links support
     - [ ] link
     - [ ] symlink
     - [ ] readlink
-    - [ ] unlink
 - Utility
   - [x] Bash script for easier build
 - Program
