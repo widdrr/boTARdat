@@ -41,3 +41,5 @@ int btrdt_mknod(const char *path, mode_t mode, dev_t dev);
 //opertion that changes access and modified times for gived fiel
 int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_file_info *fi);
 
+int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
+

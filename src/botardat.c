@@ -13,6 +13,7 @@ static const struct fuse_operations btrdt_op ={
     .read = btrdt_read,
     .mknod = btrdt_mknod,
     .utimens = btrdt_utimens,
+    .chmod = btrdt_chmod,
     
 };
 

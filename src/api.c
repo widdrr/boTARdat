@@ -145,3 +145,17 @@ int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_
 
     return 0;
 }
+
+int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    archive_entry_set_mode(found->entry, mode);
+
+    return 0;
+}
