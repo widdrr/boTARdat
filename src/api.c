@@ -168,9 +168,12 @@ int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_inf
     if(found == NULL){
         return -ENOENT;
     }
-    printf("%d, %d\n",owner, group);
-    archive_entry_set_uid(found->entry, owner);
-    archive_entry_set_gid(found->entry,group);
+
+    //-1 represents missing parameter therefore it does not require change
+    if(owner != -1)
+        archive_entry_set_uid(found->entry, owner);
+    if(group != -1)
+        archive_entry_set_gid(found->entry, group);
 
     return 0;
 }
