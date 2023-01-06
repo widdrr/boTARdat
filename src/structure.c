@@ -34,9 +34,22 @@ void free_node(node* die_node){
 
 void add_child(node* parent, node* child){
     
-    //todo check if child already exists
+    //if node already exists, then it's a placeholder node created during init
+    //this is because all other cases check for node existance before adding a new node.
+    node* found;
+    HASH_FIND_STR(parent->children,child->name,found);
+    
+    //all we do is replace it's entry
+    if(found != NULL){
+        archive_entry_free(found->entry);
+        found->entry = archive_entry_clone(child->entry);
+
+        free_node(child);
+    }
+
     child->parent = parent;
     HASH_ADD_STR(parent->children,name,child);
+   
     //if child is a directory, increase the link count of parent, because of '..'
     if(archive_entry_filetype(child->entry) == AE_IFDIR){
         archive_entry_set_nlink(parent->entry,archive_entry_nlink(parent->entry) + 1);
@@ -56,8 +69,18 @@ int add_path(node* root, node*child){
     node* parent = find_node(root,parent_path);
     free(parent_path);
 
+    //if parent doesn't exist, create it temporarely
+    //this is because entries in a .TAR file might not be in a DFS-like order
+    //however, we are certain to read it's entry later
     if(parent == NULL){
-        return -ENOENT;
+        parent = new_node();
+
+        parent->path = strdup(parent_path);
+        parent->name = strrchr(parent->path,'/') + 1;
+
+        //recursively try and add the parent
+        add_path(root,parent);
+
     }
     //add the parent-child relationship
     add_child(parent,child);
