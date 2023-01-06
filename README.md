@@ -16,7 +16,8 @@ basic opensource TAR directory access tool
     - [x] Add node to parent
     - [x] Remove node from parent
     - [x] Temporary files for write
-    - [x] Read from file
+    - [x] Read from entry
+    - [x] Create placeholder node
 - Archive IO
   - [x] Create structure from archive
   - [ ] Recreate archive from structure

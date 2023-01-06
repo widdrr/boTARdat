@@ -34,12 +34,27 @@ void free_node(node* die_node){
 
 void add_child(node* parent, node* child){
     
-    //todo check if child already exists
-    child->parent = parent;
-    HASH_ADD_STR(parent->children,name,child);
-    //if child is a directory, increase the link count of parent, because of '..'
-    if(archive_entry_filetype(child->entry) == AE_IFDIR){
-        archive_entry_set_nlink(parent->entry,archive_entry_nlink(parent->entry) + 1);
+    //if node already exists, then it's a placeholder node created during init
+    //this is because all other cases check for node existance before adding a new node.
+    node* found;
+    HASH_FIND_STR(parent->children,child->name,found);
+    
+    //all we do is replace it's entry
+    if(found != NULL){
+        printf("gasit: %s\n", found->path);
+        archive_entry_free(found->entry);
+        found->entry = archive_entry_clone(child->entry);
+
+        free_node(child);
+    }
+    else {
+        child->parent = parent;
+        HASH_ADD_STR(parent->children,name,child);
+
+        //if child is a directory, increase the link count of parent, because of '..'
+        if(archive_entry_filetype(child->entry) == AE_IFDIR){
+            archive_entry_set_nlink(parent->entry,archive_entry_nlink(parent->entry) + 1);
+        }
     }
 }
 
@@ -54,11 +69,21 @@ int add_path(node* root, node*child){
     }
     //search parent node
     node* parent = find_node(root,parent_path);
-    free(parent_path);
 
+    //if parent doesn't exist, create it temporarely
+    //this is because entries in a .TAR file might not be in a DFS-like order
+    //however, we are certain to read it's entry later
     if(parent == NULL){
-        return -ENOENT;
+        parent = new_node();
+
+        parent->path = strdup(parent_path);
+        parent->name = strrchr(parent->path,'/') + 1;
+        
+        //recursively try and add the parent
+        add_path(root,parent);
+
     }
+    free(parent_path);
     //add the parent-child relationship
     add_child(parent,child);
 
@@ -184,14 +209,25 @@ node* find_node(node* start, const char* path){
     node* found;
     HASH_FIND_STR(start->children,name,found);
 
-    if(found == NULL)
+    //desired file or an ancestor was not found
+    if(found == NULL){
+        free(name);
+        if(strcmp(name_end,"/") == 0)
+            free(name_end);
+        
         return found;
-    //cleaning up
+    }
+    
+    //if ancestor was found, continue searching
+    //found might even be the desired file,
+    //it that case it will 'search' for '/' within itself, returning itself 
     found = find_node(found,name_end);
+    
+    //cleaning up
     free(name);
-
     if(strcmp(name_end,"/") == 0)
         free(name_end);
+    
     return found;
 }
 
@@ -205,9 +241,9 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
     if(archive_read_open_fd(container,archive_fd,BLOCK_SIZE) != ARCHIVE_OK){
         return archive_errno(container);
     }
+
     //populating root
     //root had to have been initialized 
-
     root->path = strdup("/");
     root->name = root->path;
 
