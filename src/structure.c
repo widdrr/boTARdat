@@ -209,18 +209,25 @@ node* find_node(node* start, const char* path){
     node* found;
     HASH_FIND_STR(start->children,name,found);
 
+    //desired file or an ancestor was not found
     if(found == NULL){
         free(name);
         if(strcmp(name_end,"/") == 0)
             free(name_end);
+        
         return found;
     }
-    //cleaning up
+    
+    //if ancestor was found, continue searching
+    //found might even be the desired file,
+    //it that case it will 'search' for '/' within itself, returning itself 
     found = find_node(found,name_end);
+    
+    //cleaning up
     free(name);
-
     if(strcmp(name_end,"/") == 0)
         free(name_end);
+    
     return found;
 }
 
@@ -237,7 +244,6 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
 
     //populating root
     //root had to have been initialized 
-
     root->path = strdup("/");
     root->name = root->path;
 
@@ -261,7 +267,6 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
         //populate path and name
         const char* path = archive_entry_pathname(new_file->entry);
         size_t size = strlen(path);
-        printf("%s\n", path);
 
         //all files have 1 hardlink by default, their name.
         archive_entry_set_nlink(new_file->entry,1);
@@ -281,7 +286,6 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
         new_file->name = strrchr(new_file->path,'/') + 1;
 
         if(add_path(root,new_file) != 0){
-            printf("ceva e aiurea\n");
             return -errno;
         }
         new_file = new_node();
