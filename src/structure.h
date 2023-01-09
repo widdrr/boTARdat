@@ -60,3 +60,6 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st);
 
 //deconstructs the directory structure tree and frees all memory
 void burn_tree(node* start);
+
+//saves a node recursively to the new archive
+void save_node(node* start, int old_fd, archive* new_arc);

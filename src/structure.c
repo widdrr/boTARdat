@@ -146,15 +146,12 @@ void move_to_disk(node* mv_node, int container_fd){
     size_t size = archive_entry_size(mv_node->entry);
     char* copy_buffer = malloc(IO_BLOCK);
     off_t offset = 0;
-    while(size > 0){
         //todo handle errors
-        int read_size;
-        while((read_size = read_entry(mv_node, container_fd, copy_buffer, IO_BLOCK, offset)) > 0){
-            
-            offset += read_size;
-            size -= read_size;
-            write(temp_fd,copy_buffer,read_size);
-        }
+    int read_size;
+    while((read_size = read_entry(mv_node, container_fd, copy_buffer, IO_BLOCK, offset)) > 0){
+        
+        offset += read_size;
+        write(temp_fd,copy_buffer,read_size);
     }
     //clean memory
     free(copy_buffer);
@@ -277,4 +274,43 @@ void burn_tree(node* start){
     //can safely delete node now
     remove_child(start);
     free_node(start);
+}
+
+//I cannot stress enough over how bad this implementation is
+//It's performance is absolutely atrocious for large archives
+//I'm scared to even test it for that case
+//That being said, it's orders of magnitude easier to implement right now
+//Sincerely, this function's author.
+void save_node(node* start, int old_fd, archive* new_arc){
+
+    archive_write_header(new_arc,start->entry);
+
+    if(archive_entry_filetype(start->entry) == AE_IFREG){
+
+        char* copy_buffer = malloc(IO_BLOCK);
+        int read_size;
+        
+        if(start->tempf_name != NULL){
+            
+            //TO DO.. errors
+            int fd = open(start->tempf_name, O_RDONLY);
+
+            while((read_size = read(fd, copy_buffer, IO_BLOCK)) > 0){
+                archive_write_data(new_arc,copy_buffer,read_size);
+            }
+            close(fd);
+        }
+        else{
+            off_t offset = 0;
+            while((read_size = read_entry(start, old_fd, copy_buffer, IO_BLOCK, offset)) > 0){
+                offset += read_size;
+                archive_write_data(new_arc,copy_buffer,read_size);
+            }
+        }
+    }
+
+    for(node* child = start->children; child!=NULL; child=child->hh.next){
+        
+        save_node(child,old_fd,new_arc);
+    }
 }

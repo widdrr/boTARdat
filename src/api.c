@@ -28,6 +28,23 @@ void* btrdt_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
 void btrdt_destroy(void* private_data){
 
     btrdt_data *fs_data = private_data;
+
+    //save as new archive
+    char* new_name = malloc(strlen(fs_data->archive_name) + 5);
+    strncpy(new_name, fs_data->archive_name, strlen(fs_data->archive_name));
+    strncat(new_name,".new",4);
+    //TO DO... handle exceptions here
+    int new_fd = open(new_name, O_CREAT | O_WRONLY);
+
+    archive* new_container = archive_write_new();
+    archive_write_set_format_pax(new_container);
+    archive_write_open_fd(new_container,new_fd);
+
+    save_node(fs_data->root, fs_data->archive_fd, new_container);
+    archive_write_close(new_container);
+    archive_write_free(new_container);
+    close(new_fd);
+
     //deconstruct our structure
     burn_tree(fs_data->root);
 
@@ -119,6 +136,7 @@ int btrdt_mknod(const char *path, mode_t mode, dev_t dev){
     archive_entry_set_uid(new_file->entry,getuid());
     archive_entry_set_gid(new_file->entry,getgid());
     archive_entry_set_mtime(new_file->entry,time(NULL),0);
+    archive_entry_set_filetype(new_file->entry,AE_IFREG);
     archive_entry_set_mode(new_file->entry,mode);
     archive_entry_set_size(new_file->entry,0);
     archive_entry_set_nlink(new_file->entry,1);
