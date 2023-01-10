@@ -176,7 +176,7 @@ node* find_node(node* start, const char* path){
 
 node* find_by_entry(node* start, archive_entry* entry){
     
-    //transform the real_path
+    //transform the real_path, see build_tree for more details
     const char* real_path = archive_entry_pathname(entry);
     size_t size = strlen(real_path);
 
@@ -186,8 +186,9 @@ node* find_by_entry(node* start, archive_entry* entry){
     
     char* path = calloc(size + 2, sizeof(char));
     path[0] = '/';
-    strncpy(path + 1, path,size);
+    strncpy(path + 1, real_path, size);
 
+    //find node for real path
     node* found;
     found = find_node(start, path);
     free(path);
@@ -211,34 +212,42 @@ node* find_unwritten(node* start){
 
 int save(node* root, int old_fd, char* name){
 
-    char* new_name = malloc(strlen(name) + 5);
-    strncpy(new_name, name, strlen(name));
-    strcat(new_name,".new");
+    //renames original archive to <name>.tar.old
+    char* old_name = malloc(strlen(name) + 5);
+    strncpy(old_name, name, strlen(name));
+    strcat(old_name,".old");
+    rename(name,old_name);
 
     //TO DO... handle exceptions here
-    int new_fd = open(new_name, O_CREAT | O_WRONLY, S_IRWXU);
+    //creates a new archive with the original name
+    int new_fd = open(name, O_CREAT | O_WRONLY, S_IRWXU);
 
+    //opens old archive
     archive* old_container = archive_read_new();
     archive_read_support_format_tar(old_container);
     archive_read_open_fd(old_container,old_fd,BLOCK_SIZE);
-    int format = archive_format(old_container);
 
+    //opens new archive
     archive* new_container = archive_write_new();
-    archive_write_set_format(new_container, format);
+    archive_write_set_format_pax_restricted(new_container);
     archive_write_open_fd(new_container,new_fd);
 
+    //copies data found in old archive to new archive
     archive_entry* entry;
-    while(archive_read_next_header(old_container,entry) == ARCHIVE_OK){
-
-        node* found = find_by_entry(fs_data->root,entry);
+    while(archive_read_next_header(old_container, &entry) == ARCHIVE_OK){
+        
+        //for each entry, we search for the node
+        node* found = find_by_entry(root,entry);
         if(found == NULL)
             continue;
-        
+
+        //write header
         archive_write_header(new_container,found->entry);
         int read_size = -1;
         void* buffer = malloc(BUFFER_SIZE);
         
-        if(found->location != NULL){
+        //if the content has since been modified, read from the temp file
+        if(found->tempf_name != NULL){
         
             int fd = open(found->tempf_name, O_RDONLY);
             if(fd == -1)
@@ -247,15 +256,22 @@ int save(node* root, int old_fd, char* name){
             while((read_size = read(fd,buffer, BUFFER_SIZE)) > 0)
                 archive_write_data(new_container, buffer, read_size);
         }
+        //otherwise if it's not a directory, copy from old to new
         else if(archive_entry_filetype(found->entry) == AE_IFREG){
             
-            while((read_size = archive_read_data(old_container, buffer, BUFFER_SIZE)) > 0)
+            while((read_size = archive_read_data(old_container, buffer, BUFFER_SIZE)) > 0){
                 archive_write_data(new_container, buffer, read_size);
+            }
         }
+        //mark node as written
+        found->written = 1;
     }
+    //TO DO
+    //write all nodes that DO NOT have headers in the old archive.
 
-    close_archive(old_container);
-    close_archive(new_container);
+    //close archives and clean up
+    close_archive(old_fd,old_container);
+    close_archive(new_fd,new_container);
     close(new_fd);
     return 0;
 }
