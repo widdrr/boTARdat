@@ -28,7 +28,9 @@ void* btrdt_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
 void btrdt_destroy(void* private_data){
 
     btrdt_data *fs_data = private_data;
-    //deconstruct our structure
+    
+    save(fs_data->root, fs_data->archive_fd, fs_data->archive_name);
+
     burn_tree(fs_data->root);
 
 
@@ -92,7 +94,49 @@ int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct
         return -ENOENT;
     }
 
-    return read_entry(found, fs_data->archive_fd, buffer, size, offset);
+    //if reading bytes outside the file, don't
+    if(offset > archive_entry_size(found->entry)){
+        return 0;
+    }
+
+    int read_size = -1;
+
+    //if node has a temp file, read from it
+    if(found->tempf_name != NULL){
+        
+        int fd = open(found->tempf_name, O_RDONLY);
+        lseek(fd,offset,SEEK_SET);
+        read_size = read(fd,buffer,size);
+        close(fd);
+        
+        return read_size; 
+    }
+
+    //find the location of the entry in the archive
+    struct archive *arc = archive_read_new();
+    int err;
+    if((err = find_entry(found->entry, fs_data->archive_fd, arc)) != 0){
+        return -err;
+    }
+    //skip the offset by reading and discarding
+    //also no convenient way around this.
+    void* trash = malloc(BUFFER_SIZE);
+    while(offset){
+        int skip;
+        if(offset > BUFFER_SIZE)
+            skip = BUFFER_SIZE;
+        else
+            skip = offset;
+    //todo handle errors
+        archive_read_data(arc,trash, skip);
+        offset = offset - skip;
+    } 
+    free(trash);
+    //todo handle errors
+    read_size = archive_read_data(arc, buffer, size);
+    //clean up and reset pointer
+    close_archive(fs_data->archive_fd, arc);
+    return read_size;
 }
 
 int btrdt_mknod(const char *path, mode_t mode, dev_t dev){

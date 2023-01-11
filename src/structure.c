@@ -15,6 +15,7 @@ node* new_node(){
     new_node->entry = archive_entry_new();
     new_node->tempf_name = NULL;
     memset(&new_node->hh,0,sizeof(UT_hash_handle));
+    new_node->written = 0;
 
     return new_node;
 }
@@ -98,54 +99,38 @@ void remove_child(node* child){
     child->parent = NULL;
 }
 
-int read_entry(node* rd_node, int container_fd, char* buffer, size_t size, off_t offset){
-    
-    int read_size = -ENOENT;
-    const char* realpath = archive_entry_pathname(rd_node->entry);
-    struct archive_entry *entry;
-    
-    struct archive *arc = archive_read_new();
-    archive_read_support_format_tar(arc);
+int find_entry(archive_entry* entry, int container_fd, archive* out_arc){
 
-    if(archive_read_open_fd(arc,container_fd,BLOCK_SIZE) != ARCHIVE_OK){
-        return -archive_errno(arc);
+    const char* realpath = archive_entry_pathname(entry);
+    archive_entry* ent;
+
+    archive_read_support_format_tar(out_arc);
+
+    if(archive_read_open_fd(out_arc,container_fd,BLOCK_SIZE) != ARCHIVE_OK){
+        return archive_errno(out_arc);
     }
     //we search the archive sequentially until we find a matching entry
     //there seems to be no convenient way to get around this
-    while(archive_read_next_header(arc,&entry)==ARCHIVE_OK){
+    while(archive_read_next_header(out_arc, &ent)==ARCHIVE_OK){
         const char* path;
-        path = archive_entry_pathname(entry);
+        path = archive_entry_pathname(ent);
         
-        if(strcmp(realpath,path) == 0){
-            //if reading bytes outside the file, don't
-            if(offset > archive_entry_size(entry)){
-                read_size = 0;
-                break;
-            }
-            //skip the offset by reading and discarding
-            //also no convenient way around this.
-            void* trash = malloc(IO_BLOCK);
-            while(offset){
-                int skip;
-                if(offset > IO_BLOCK)
-                    skip = IO_BLOCK;
-                else
-                    skip = offset;
-                //todo handle errors
-                archive_read_data(arc,trash,skip);
-                offset = offset - skip;
-            }   
-            free(trash);
-            //todo handle errors
-            read_size = archive_read_data(arc,buffer,size);
-            break;
+        //we have found our header, calling
+        //archive_read_data now returns the desired data
+        if(strcmp(realpath,path) == 0){            
+            return 0;
         }
-        archive_read_data_skip(arc);
+        archive_read_data_skip(out_arc);
     }
-    //clean up and reset pointer
-    archive_read_free(arc);
-    lseek(container_fd, 0, SEEK_SET);
-    return read_size;
+    //if we didn't find it, clean up
+    close_archive(container_fd, out_arc);
+    return ENOENT;
+}
+
+void close_archive(int container_fd, archive* out_archive){
+
+    archive_read_free(out_archive);
+    lseek(container_fd, 0, SEEK_SET); 
 }
 
 void move_to_disk(node* mv_node, int container_fd){
@@ -163,24 +148,18 @@ void move_to_disk(node* mv_node, int container_fd){
         close(temp_fd);
         return;
     }
+
+    archive* read_arc = archive_read_new();
+    find_entry(mv_node->entry, container_fd, read_arc);
+
     //we copy the original contents to our new file.
-    //NOTE: This is very inneficient, because every time we read a new block
-    //We search the entire archive for the entry again
-    //Due to the nature of the operation we can greatly speed it up.
-    //This requires writing specialized code for copying the entire contents of a file.
-    size_t size = archive_entry_size(mv_node->entry);
-    char* copy_buffer = malloc(IO_BLOCK);
-    off_t offset = 0;
-    while(size > 0){
-        //todo handle errors
-        int read_size;
-        while((read_size = read_entry(mv_node, container_fd, copy_buffer, IO_BLOCK, offset)) > 0){
-            
-            offset += read_size;
-            size -= read_size;
-            write(temp_fd,copy_buffer,read_size);
-        }
+    char* copy_buffer = malloc(BUFFER_SIZE);
+    int read_size;
+    while((read_size = archive_read_data(read_arc,copy_buffer,BUFFER_SIZE)) > 0){
+        write(temp_fd,copy_buffer,read_size);
     }
+    //clean up and reset pointer
+    close_archive(container_fd,read_arc);
     //clean memory
     free(copy_buffer);
     close(temp_fd);
@@ -229,6 +208,108 @@ node* find_node(node* start, const char* path){
         free(name_end);
     
     return found;
+}
+
+node* find_by_entry(node* start, archive_entry* entry){
+    
+    //transform the real_path, see build_tree for more details
+    const char* real_path = archive_entry_pathname(entry);
+    size_t size = strlen(real_path);
+
+    if(archive_entry_filetype(entry) == AE_IFDIR){
+        --size;
+    }
+    
+    char* path = calloc(size + 2, sizeof(char));
+    path[0] = '/';
+    strncpy(path + 1, real_path, size);
+
+    //find node for real path
+    node* found;
+    found = find_node(start, path);
+    free(path);
+    return found;
+}
+
+node* find_unwritten(node* start){
+
+    if(start->written == 0)
+        return start;
+    
+    for(node* child = start->children; child!=NULL; child=child->hh.next){
+        
+        node* found = find_unwritten(child);
+        if(found != NULL)
+            return found;
+    }
+    return NULL;
+
+}
+
+int save(node* root, int old_fd, char* name){
+
+    //renames original archive to <name>.tar.old
+    char* old_name = malloc(strlen(name) + 5);
+    strncpy(old_name, name, strlen(name));
+    strcat(old_name,".old");
+    rename(name,old_name);
+
+    //TO DO... handle exceptions here
+    //creates a new archive with the original name
+    int new_fd = open(name, O_CREAT | O_WRONLY, S_IRWXU);
+
+    //opens old archive
+    archive* old_container = archive_read_new();
+    archive_read_support_format_tar(old_container);
+    archive_read_open_fd(old_container,old_fd,BLOCK_SIZE);
+
+    //opens new archive
+    archive* new_container = archive_write_new();
+    archive_write_set_format_pax_restricted(new_container);
+    archive_write_open_fd(new_container,new_fd);
+
+    //copies data found in old archive to new archive
+    archive_entry* entry;
+    while(archive_read_next_header(old_container, &entry) == ARCHIVE_OK){
+        
+        //for each entry, we search for the node
+        node* found = find_by_entry(root,entry);
+        if(found == NULL)
+            continue;
+
+        //write header
+        archive_write_header(new_container,found->entry);
+        int read_size = -1;
+        void* buffer = malloc(BUFFER_SIZE);
+        
+        //if the content has since been modified, read from the temp file
+        if(found->tempf_name != NULL){
+        
+            int fd = open(found->tempf_name, O_RDONLY);
+            if(fd == -1)
+                return errno;
+        
+            while((read_size = read(fd,buffer, BUFFER_SIZE)) > 0)
+                archive_write_data(new_container, buffer, read_size);
+        }
+        //otherwise if it's not a directory, copy from old to new
+        else if(archive_entry_filetype(found->entry) == AE_IFREG){
+            
+            while((read_size = archive_read_data(old_container, buffer, BUFFER_SIZE)) > 0){
+                archive_write_data(new_container, buffer, read_size);
+            }
+        }
+        //mark node as written
+        found->written = 1;
+    }
+    //TO DO
+    //write all nodes that DO NOT have headers in the old archive.
+
+    //close archives and clean up
+    close_archive(old_fd,old_container);
+    close_archive(new_fd,new_container);
+    close(new_fd);
+    return 0;
 }
 
 int build_tree(node* root, int archive_fd, struct stat* mount_st){
@@ -293,8 +374,7 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
     //free the extra node
     free_node(new_file);
     //free archive and reset pointer
-    archive_read_free(container);
-    lseek(archive_fd,0,SEEK_SET);
+    close_archive(archive_fd, container);
     return 0;
 }
 
@@ -314,3 +394,9 @@ void burn_tree(node* start){
     remove_child(start);
     free_node(start);
 }
+
+//I cannot stress enough over how bad this implementation is
+//It's performance is absolutely atrocious for large archives
+//I'm scared to even test it for that case
+//That being said, it's orders of magnitude easier to implement right now
+//Sincerely, this function's author.
