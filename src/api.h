@@ -52,3 +52,9 @@ int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, str
 
 //operation that creates a new directory
 int btrdt_mkdir(const char *path, mode_t mode);
+
+//operation that removes a file
+int btrdt_unlink(const char *path);
+
+//operation that removes an empty directory
+int btrdt_rmdir(const char *path);

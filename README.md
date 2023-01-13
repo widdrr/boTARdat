@@ -31,14 +31,14 @@ basic opensource TAR directory access tool
     - [x] readdir
     - [ ] lseek
   - Write operations
-    - [ ] write
+    - [x] write
     - [x] mknod
-    - [ ] mkdir
+    - [x] mkdir
     - [x] chmod
     - [x] chow
     - [x] utime
-    - [ ] unlink
-    - [ ] rmdir
+    - [x] unlink
+    - [x] rmdir
     - [ ] rename
   - Links support
     - [ ] link

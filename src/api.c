@@ -237,6 +237,7 @@ int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, str
     close(fh);
     return bytes;
 }
+
 int btrdt_mkdir(const char *path, mode_t mode)
 {
     btrdt_data* fs_data = fuse_get_context()->private_data;
@@ -264,5 +265,39 @@ int btrdt_mkdir(const char *path, mode_t mode)
     archive_entry_set_size(new_file->entry,0);
     archive_entry_set_nlink(new_file->entry,2);
 
+    return 0;
+}
+
+int btrdt_unlink(const char *path){
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    remove_child(found);
+    free(found);
+
+    return 0;
+}
+
+
+int btrdt_rmdir(const char *path){
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    //checks if directory has no children
+    if(found->children!= NULL){
+        return -ENOTEMPTY;
+    }
+    
+    remove_child(found);
+    free(found);
+    
     return 0;
 }
