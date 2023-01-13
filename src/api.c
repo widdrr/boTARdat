@@ -221,3 +221,37 @@ int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_inf
 
     return 0;
 }
+
+int btrdt_unlink(const char *path){
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    remove_child(found);
+    free(found);
+
+    return 0;
+}
+
+
+int btrdt_rmdir(const char *path){
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    if(found->children!= NULL){
+        return -ENOTEMPTY;
+    }
+    
+    remove_child(found);
+    free(found);
+    
+    return 0;
+}
+

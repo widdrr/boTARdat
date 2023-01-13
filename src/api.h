@@ -46,3 +46,10 @@ int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
 
 //operation that changes owner id and/or group id
 int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_info *fi);
+
+//operation that removes a file
+int btrdt_unlink(const char *path);
+
+//operation that removes an empty directory
+int btrdt_rmdir(const char *path);
+
