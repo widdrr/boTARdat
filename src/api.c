@@ -229,13 +229,13 @@ int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, str
     {
         return -ENOENT;
     }
-    int fh;
+    int fh,bytes;
     //create a temp file for the current node, if it already has one then it stops
     move_to_disk(found,fs_data->archive_fd);
     fh = open(found->tempf_name,O_WRONLY);
-    pwrite(fh,buf,size,offset);
+    bytes = pwrite(fh,buf,size,offset);
     close(fh);
-    return 0;
+    return bytes;
 }
 int btrdt_mkdir(const char *path, mode_t mode)
 {
