@@ -264,6 +264,5 @@ int btrdt_mkdir(const char *path, mode_t mode)
     archive_entry_set_size(new_file->entry,0);
     archive_entry_set_nlink(new_file->entry,2);
 
-    move_to_disk(new_file,-1);
     return 0;
 }
