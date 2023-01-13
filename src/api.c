@@ -105,8 +105,7 @@ int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct
     if(found->tempf_name != NULL){
         
         int fd = open(found->tempf_name, O_RDONLY);
-        lseek(fd,offset,SEEK_SET);
-        read_size = read(fd,buffer,size);
+        read_size = pread(fd,buffer,size,offset);
         close(fd);
         
         return read_size; 

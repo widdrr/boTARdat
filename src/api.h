@@ -47,4 +47,5 @@ int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
 //operation that changes owner id and/or group id
 int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_info *fi);
 
+//operation that writes a number of bytes from the buffer to the file associated with the file descriptor
 int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, struct fuse_file_info *fi);
