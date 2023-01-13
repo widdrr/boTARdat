@@ -245,6 +245,7 @@ int btrdt_rmdir(const char *path){
         return -ENOENT;
     }
 
+    //checks if directory has no children
     if(found->children!= NULL){
         return -ENOTEMPTY;
     }
