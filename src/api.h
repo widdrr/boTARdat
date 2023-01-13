@@ -52,4 +52,3 @@ int btrdt_unlink(const char *path);
 
 //operation that removes an empty directory
 int btrdt_rmdir(const char *path);
-
