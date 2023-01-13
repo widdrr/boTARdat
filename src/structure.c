@@ -67,7 +67,6 @@ int add_path(node* root, node* child){
         free(parent_path);
         parent_path = strdup("/");   
     }
-    printf("trying to add child %s\n to father %s\n",child->path,parent_path);
     //search parent node
     node* parent = find_node(root,parent_path);
 
