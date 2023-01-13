@@ -16,6 +16,7 @@ static const struct fuse_operations btrdt_op ={
     .chmod = btrdt_chmod,
     .chown = btrdt_chown,
     .write = btrdt_write,
+    .mkdir = btrdt_mkdir,
     
 };
 
