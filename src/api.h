@@ -58,3 +58,10 @@ int btrdt_unlink(const char *path);
 
 //operation that removes an empty directory
 int btrdt_rmdir(const char *path);
+
+//operation that changes file size
+int btrdt_truncate(const char *path, off_t size, struct fuse_file_info *fi);
+
+//operation that renames file or directory
+int btrdt_rename(const char *old_path, const char *new_path, unsigned int flags);
+

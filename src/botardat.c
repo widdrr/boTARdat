@@ -19,6 +19,8 @@ static const struct fuse_operations btrdt_op ={
     .mkdir = btrdt_mkdir,
     .unlink = btrdt_unlink,
     .rmdir = btrdt_rmdir,
+    .truncate = btrdt_truncate,
+    .rename = btrdt_rename,
 };
 
 //argument parsing function

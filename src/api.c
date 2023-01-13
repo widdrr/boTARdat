@@ -33,7 +33,6 @@ void btrdt_destroy(void* private_data){
 
     burn_tree(fs_data->root);
 
-
     //free other fields
     free(fs_data->archive_name);
     free(fs_data->mount_name);
@@ -61,6 +60,8 @@ int btrdt_getattr(const char *path, struct stat* st, struct fuse_file_info* fi){
     st->st_size = archive_entry_size(found->entry);
     st->st_nlink = archive_entry_nlink(found->entry);
     st->st_mtim.tv_sec = archive_entry_mtime(found->entry);
+    st->st_atim.tv_sec = archive_entry_atime(found->entry);
+    st->st_ctim.tv_sec = archive_entry_ctime(found->entry);
     
     return 0;
 }
@@ -82,6 +83,7 @@ int btrdt_readdir(const char* path, void* buffer, fuse_fill_dir_t filler, off_t 
     for(node* child = dir->children; child!=NULL; child=child->hh.next){
         filler(buffer,child->name,NULL,0,0);
     }
+    archive_entry_set_atime(dir->entry,time(NULL),0);
     
     return 0;
 }
@@ -135,11 +137,14 @@ int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct
     read_size = archive_read_data(arc, buffer, size);
     //clean up and reset pointer
     close_archive(fs_data->archive_fd, arc);
+
+    archive_entry_set_atime(found->entry,time(NULL),0);
+
     return read_size;
 }
 
 int btrdt_mknod(const char *path, mode_t mode, dev_t dev){
-    
+
     btrdt_data* fs_data = fuse_get_context()->private_data;
 
     //if file exists, error
@@ -153,15 +158,15 @@ int btrdt_mknod(const char *path, mode_t mode, dev_t dev){
     new_file->path = strdup(path);
     new_file->name = strrchr(new_file->path,'/') + 1;
 
-    if(add_path(fs_data->root,new_file) != 0){
-        return -errno;
-    }
+    add_path(fs_data->root,new_file);
 
     //set all relevant archive entry stat values
     archive_entry_set_pathname(new_file->entry, new_file->path + 1);
     archive_entry_set_uid(new_file->entry,getuid());
     archive_entry_set_gid(new_file->entry,getgid());
     archive_entry_set_mtime(new_file->entry,time(NULL),0);
+    archive_entry_set_atime(new_file->entry,time(NULL),0);
+    archive_entry_set_ctime(new_file->entry,time(NULL),0);
     archive_entry_set_mode(new_file->entry,mode);
     archive_entry_set_size(new_file->entry,0);
     archive_entry_set_nlink(new_file->entry,1);
@@ -186,6 +191,8 @@ int btrdt_utimens(const char *path, const struct timespec times[2], struct fuse_
     archive_entry_set_atime(found->entry,times[0].tv_sec,0);
     archive_entry_set_mtime(found->entry,times[1].tv_sec,0);
 
+    archive_entry_set_ctime(found->entry,time(NULL),0);
+
     return 0;
 }
 
@@ -199,6 +206,8 @@ int btrdt_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
     }
 
     archive_entry_set_mode(found->entry, mode);
+
+    archive_entry_set_ctime(found->entry,time(NULL),0);
 
     return 0;
 }
@@ -218,6 +227,8 @@ int btrdt_chown(const char *path, uid_t owner, gid_t group, struct fuse_file_inf
     if(group != -1)
         archive_entry_set_gid(found->entry, group);
 
+    archive_entry_set_ctime(found->entry,time(NULL),0);
+
     return 0;
 }
 
@@ -225,23 +236,33 @@ int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, str
 {
     btrdt_data* fs_data = fuse_get_context()->private_data;
     node* found = find_node(fs_data->root,path);
-    if(found == NULL)
-    {
+
+    if(found == NULL){
         return -ENOENT;
     }
-    int fh,bytes;
+    
+    int fh;
     //create a temp file for the current node, if it already has one then it stops
+    
     move_to_disk(found,fs_data->archive_fd);
+
     fh = open(found->tempf_name,O_WRONLY);
-    bytes = pwrite(fh,buf,size,offset);
+    pwrite(fh,buf,size,offset);
     close(fh);
-    return bytes;
+
+    if(size + offset > archive_entry_size(found->entry))
+        archive_entry_set_size(found->entry, size + offset);
+
+    archive_entry_set_atime(found->entry,time(NULL),0);
+    archive_entry_set_mtime(found->entry,time(NULL),0);
+    archive_entry_set_ctime(found->entry,time(NULL),0);
+
+    return size;
 }
 
 int btrdt_mkdir(const char *path, mode_t mode)
 {
     btrdt_data* fs_data = fuse_get_context()->private_data;
-
     //if file exists, error
     if(find_node(fs_data->root,path) != NULL){
         return -EEXIST;
@@ -253,22 +274,30 @@ int btrdt_mkdir(const char *path, mode_t mode)
     new_file->path = strdup(path);
     new_file->name = strrchr(new_file->path,'/') + 1;
 
-    if(add_path(fs_data->root,new_file) != 0){
-        return -errno;
-    }
+    add_path(fs_data->root,new_file);
     
-    archive_entry_set_pathname(new_file->entry, new_file->path + 1);
+    //the pathname in the archive entry has / at the end
+    char* entry_path = malloc(strlen(path) + 1);
+    strncpy(entry_path,path + 1,strlen(path) - 1);
+    entry_path[strlen(path) - 1] = '/';
+    entry_path[strlen(path)] = '\0';
+
+    archive_entry_set_pathname(new_file->entry, entry_path);
     archive_entry_set_uid(new_file->entry,getuid());
     archive_entry_set_gid(new_file->entry,getgid());
+    archive_entry_set_atime(new_file->entry,time(NULL),0);
     archive_entry_set_mtime(new_file->entry,time(NULL),0);
-    archive_entry_set_mode(new_file->entry,mode);
+    archive_entry_set_ctime(new_file->entry,time(NULL),0);
+    archive_entry_set_mode(new_file->entry,mode|S_IFDIR);
     archive_entry_set_size(new_file->entry,0);
     archive_entry_set_nlink(new_file->entry,2);
 
+    free(entry_path);
     return 0;
 }
 
 int btrdt_unlink(const char *path){
+
     btrdt_data* fs_data = fuse_get_context()->private_data;
 
     node* found = find_node(fs_data->root,path);
@@ -277,13 +306,13 @@ int btrdt_unlink(const char *path){
     }
 
     remove_child(found);
-    free(found);
+    free_node(found);
 
     return 0;
 }
 
-
 int btrdt_rmdir(const char *path){
+    
     btrdt_data* fs_data = fuse_get_context()->private_data;
 
     node* found = find_node(fs_data->root,path);
@@ -297,7 +326,70 @@ int btrdt_rmdir(const char *path){
     }
     
     remove_child(found);
-    free(found);
+    free_node(found);
     
+    return 0;
+}
+
+int btrdt_truncate(const char *path, off_t size, struct fuse_file_info *fi){
+
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    move_to_disk(found, fs_data->archive_fd);
+
+    if(truncate(found->tempf_name,size) != 0)
+        return -errno;
+    
+    archive_entry_set_size(found->entry, size);
+
+    archive_entry_set_atime(found->entry,time(NULL),0);
+    archive_entry_set_mtime(found->entry,time(NULL),0);
+    archive_entry_set_ctime(found->entry,time(NULL),0);
+
+    return 0;
+}
+
+int btrdt_rename(const char *old_path, const char *new_path, unsigned int flags){
+
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,old_path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    node* dest = find_node(fs_data->root,new_path);
+
+    if(dest != NULL){
+        return -EEXIST;
+    }
+
+    remove_child(found);
+    free(found->path);
+    found->path = strdup(new_path);
+    found->name = strrchr(found->path,'/') + 1;
+    archive_entry_set_pathname(found->entry, found->path + 1);
+
+    if(archive_entry_filetype(found->entry) == AE_IFDIR){
+    
+        char* entry_path = malloc(strlen(new_path) + 1);
+        strncpy(entry_path,new_path + 1,strlen(new_path) - 1);
+        entry_path[strlen(new_path) - 1] = '/';
+        entry_path[strlen(new_path)] = '\0';
+        archive_entry_set_pathname(found->entry, entry_path);
+
+        free(entry_path);
+    }
+
+    add_path(fs_data->root,found);
+    rename_children(found);
+
+    archive_entry_set_ctime(found->entry,time(NULL),0);
+
     return 0;
 }

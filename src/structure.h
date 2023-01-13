@@ -68,8 +68,14 @@ node* find_by_entry(node* start, archive_entry* entry);
 //returns the first node found that has not been written
 node* find_unwritten(node* start);
 
+//fixes the path of every descendant for a renamed directory
+void rename_children(node* node);
+
 //saves the contents of the directory structure to a new archive
 int save(node* root, int old_fd, char* name);
+
+//adds all new files to a new archive
+int save_new(node* start, archive* new_arch);
 
 //builds directory structure tree from archive with given file descriptor
 //struct stat for mount point is used to set the root's mode

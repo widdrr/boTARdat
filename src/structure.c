@@ -42,7 +42,6 @@ void add_child(node* parent, node* child){
     
     //all we do is replace it's entry
     if(found != NULL){
-        printf("gasit: %s\n", found->path);
         archive_entry_free(found->entry);
         found->entry = archive_entry_clone(child->entry);
 
@@ -59,7 +58,7 @@ void add_child(node* parent, node* child){
     }
 }
 
-int add_path(node* root, node*child){
+int add_path(node* root, node* child){
 
     //get path for parent 
     char* parent_path = strndup(child->path, child->name - child->path - 1);
@@ -68,6 +67,7 @@ int add_path(node* root, node*child){
         free(parent_path);
         parent_path = strdup("/");   
     }
+    printf("trying to add child %s\n to father %s\n",child->path,parent_path);
     //search parent node
     node* parent = find_node(root,parent_path);
 
@@ -107,7 +107,7 @@ int find_entry(archive_entry* entry, int container_fd, archive* out_arc){
     archive_read_support_format_tar(out_arc);
 
     if(archive_read_open_fd(out_arc,container_fd,BLOCK_SIZE) != ARCHIVE_OK){
-        return archive_errno(out_arc);
+        return -archive_errno(out_arc);
     }
     //we search the archive sequentially until we find a matching entry
     //there seems to be no convenient way to get around this
@@ -124,7 +124,7 @@ int find_entry(archive_entry* entry, int container_fd, archive* out_arc){
     }
     //if we didn't find it, clean up
     close_archive(container_fd, out_arc);
-    return ENOENT;
+    return -ENOENT;
 }
 
 void close_archive(int container_fd, archive* out_archive){
@@ -246,6 +246,43 @@ node* find_unwritten(node* start){
 
 }
 
+void rename_children(node* start){
+    
+    for(node* child = start->children; child != NULL; child = child->hh.next){
+        
+        //create new path
+        char* parent_path = child->parent->path;
+        char* new_path = malloc(strlen(parent_path) + strlen(child->name) + 2);
+
+        //add the parent path and append the file name
+        strncpy(new_path,parent_path,strlen(parent_path));
+        new_path[strlen(parent_path)]='/';
+        strncpy(new_path + strlen(parent_path) + 1, child->name, strlen(child->name) + 1);
+
+        free(child->path);
+
+        child->path = new_path;
+        child->name = strrchr(new_path,'/') + 1;
+        archive_entry_set_pathname(child->entry,new_path + 1);
+
+        //if directory, don't forget to append '/' to the entry and recurse into it
+        if(archive_entry_filetype(child->entry) == AE_IFDIR){
+            
+            char* entry_path = malloc(strlen(new_path) + 1);
+            strncpy(entry_path, new_path + 1, strlen(new_path) - 1);
+            entry_path[strlen(new_path) - 1] = '/';
+            entry_path[strlen(new_path)] = '\0';
+
+            archive_entry_set_pathname(child->entry,entry_path);
+
+            free(entry_path);
+
+            rename_children(child);
+        }
+
+    }
+}
+
 int save(node* root, int old_fd, char* name){
 
     //renames original archive to <name>.tar.old
@@ -268,6 +305,8 @@ int save(node* root, int old_fd, char* name){
     archive_write_set_format_pax_restricted(new_container);
     archive_write_open_fd(new_container,new_fd);
 
+    int read_size = -1;
+    void* buffer = malloc(BUFFER_SIZE);
     //copies data found in old archive to new archive
     archive_entry* entry;
     while(archive_read_next_header(old_container, &entry) == ARCHIVE_OK){
@@ -279,15 +318,13 @@ int save(node* root, int old_fd, char* name){
 
         //write header
         archive_write_header(new_container,found->entry);
-        int read_size = -1;
-        void* buffer = malloc(BUFFER_SIZE);
         
         //if the content has since been modified, read from the temp file
         if(found->tempf_name != NULL){
         
             int fd = open(found->tempf_name, O_RDONLY);
             if(fd == -1)
-                return errno;
+                return -errno;
         
             while((read_size = read(fd,buffer, BUFFER_SIZE)) > 0)
                 archive_write_data(new_container, buffer, read_size);
@@ -302,13 +339,43 @@ int save(node* root, int old_fd, char* name){
         //mark node as written
         found->written = 1;
     }
-    //TO DO
-    //write all nodes that DO NOT have headers in the old archive.
+    free(buffer);
+    
+    if(save_new(root,new_container) != 0)
+        return -errno;
 
     //close archives and clean up
     close_archive(old_fd,old_container);
     close_archive(new_fd,new_container);
     close(new_fd);
+    return 0;
+}
+
+int save_new(node* start, archive* new_arch){
+    
+    if(start->written == 0){
+        
+        archive_write_header(new_arch,start->entry);
+        if(start->tempf_name != NULL){
+            
+            int fd = open(start->tempf_name, O_RDONLY);
+            if(fd == -1)
+                return -errno;
+            
+            int read_size = -1;
+            void* buffer = malloc(BUFFER_SIZE);
+            
+            while((read_size = read(fd,buffer, BUFFER_SIZE)) > 0)
+                archive_write_data(new_arch, buffer, read_size);
+            
+            free(buffer);
+        }
+        start->written = 1;
+    }
+    for(node* child = start->children; child != NULL; child = child->hh.next){
+        if(save_new(child,new_arch) != 0)
+            return -errno;
+    }
     return 0;
 }
 
@@ -320,7 +387,7 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
     //todo: handle errors
 
     if(archive_read_open_fd(container,archive_fd,BLOCK_SIZE) != ARCHIVE_OK){
-        return archive_errno(container);
+        return -archive_errno(container);
     }
 
     //populating root
@@ -335,6 +402,8 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
     archive_entry_set_uid(root->entry,st.st_uid);
     archive_entry_set_gid(root->entry,st.st_gid);
     archive_entry_set_mtime(root->entry,st.st_mtime,0);
+    archive_entry_set_atime(root->entry,st.st_atime,0);
+    archive_entry_set_ctime(root->entry,st.st_ctime,0);
     archive_entry_set_size(root->entry,0);
     archive_entry_set_nlink(root->entry,2);
 
@@ -351,6 +420,9 @@ int build_tree(node* root, int archive_fd, struct stat* mount_st){
 
         //all files have 1 hardlink by default, their name.
         archive_entry_set_nlink(new_file->entry,1);
+
+        archive_entry_set_atime(root->entry,time(NULL),0);
+        archive_entry_set_ctime(root->entry,time(NULL),0);
 
         //if entry is a directory, it ends with '/' and we need to remove it
         //we also set the hardlink count to 2 while we're at it, since directories have '.'
@@ -394,9 +466,3 @@ void burn_tree(node* start){
     remove_child(start);
     free_node(start);
 }
-
-//I cannot stress enough over how bad this implementation is
-//It's performance is absolutely atrocious for large archives
-//I'm scared to even test it for that case
-//That being said, it's orders of magnitude easier to implement right now
-//Sincerely, this function's author.
