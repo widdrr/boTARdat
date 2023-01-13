@@ -237,3 +237,33 @@ int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, str
     close(fh);
     return 0;
 }
+int btrdt_mkdir(const char *path, mode_t mode)
+{
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    //if file exists, error
+    if(find_node(fs_data->root,path) != NULL){
+        return -EEXIST;
+    }
+
+    node* new_file = new_node();
+
+    //we set path and name
+    new_file->path = strdup(path);
+    new_file->name = strrchr(new_file->path,'/') + 1;
+
+    if(add_path(fs_data->root,new_file) != 0){
+        return -errno;
+    }
+    
+    archive_entry_set_pathname(new_file->entry, new_file->path + 1);
+    archive_entry_set_uid(new_file->entry,getuid());
+    archive_entry_set_gid(new_file->entry,getgid());
+    archive_entry_set_mtime(new_file->entry,time(NULL),0);
+    archive_entry_set_mode(new_file->entry,mode);
+    archive_entry_set_size(new_file->entry,0);
+    archive_entry_set_nlink(new_file->entry,2);
+
+    move_to_disk(new_file,-1);
+    return 0;
+}
