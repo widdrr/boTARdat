@@ -20,7 +20,7 @@ basic opensource TAR directory access tool
     - [x] Create placeholder node
 - Archive IO
   - [x] Create structure from archive
-  - [ ] Recreate archive from structure
+  - [x] Recreate archive from structure
 - FUSE API
   - Technical
     - [x] init
@@ -29,7 +29,6 @@ basic opensource TAR directory access tool
     - [x] getattr
     - [x] read
     - [x] readdir
-    - [ ] lseek
   - Write operations
     - [x] write
     - [x] mknod
@@ -39,7 +38,8 @@ basic opensource TAR directory access tool
     - [x] utime
     - [x] unlink
     - [x] rmdir
-    - [ ] rename
+    - [x] rename
+    - [x] truncate
   - Links support
     - [ ] link
     - [ ] symlink
