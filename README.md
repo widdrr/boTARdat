@@ -25,6 +25,8 @@ basic opensource TAR directory access tool
   - Technical
     - [x] init
     - [x] destroy
+    - [x] open
+    - [x] release
   - Readonly
     - [x] getattr
     - [x] read
@@ -48,5 +50,5 @@ basic opensource TAR directory access tool
   - [x] Bash script for easier build
 - Program
   - [ ] Help prompt
-  - [x] Argument parsing (still work to do)
+  - [x] Argument parsing
   - [x] Come up with a meaning for boTARdat
