@@ -106,9 +106,13 @@ int btrdt_read(const char *path, char *buffer, size_t size, off_t offset, struct
     //if node has a temp file, read from it
     if(found->tempf_name != NULL){
         
-        int fd = open(found->tempf_name, O_RDONLY);
-        read_size = pread(fd,buffer,size,offset);
-        close(fd);
+        if(fi != NULL && fi->fh != -1)
+            read_size = pread(fi->fh,buffer,size,offset);
+        else{
+            int fd = open(found->tempf_name, O_RDONLY);
+            read_size = pread(fd,buffer,size,offset);
+            close(fd);
+        }
         
         return read_size; 
     }
@@ -245,13 +249,20 @@ int btrdt_write(const char *path, const char *buf, size_t size,off_t offset, str
     //create a temp file for the current node, if it already has one then it stops
     
     move_to_disk(found,fs_data->archive_fd);
+    
+    if(fi != NULL && fi->fh != -1){
+        pwrite(fi->fh,buf,size,offset);
+    }
+    else{
+        fh = open(found->tempf_name, O_WRONLY);
+        pwrite(fh,buf,size,offset);
+        close(fh);
+    }
 
-    fh = open(found->tempf_name,O_WRONLY);
-    pwrite(fh,buf,size,offset);
-    close(fh);
+    struct stat temp_st;
+    stat(found->tempf_name,&temp_st);
 
-    if(size + offset > archive_entry_size(found->entry))
-        archive_entry_set_size(found->entry, size + offset);
+    archive_entry_set_size(found->entry, temp_st.st_size);
 
     archive_entry_set_atime(found->entry,time(NULL),0);
     archive_entry_set_mtime(found->entry,time(NULL),0);
@@ -390,6 +401,45 @@ int btrdt_rename(const char *old_path, const char *new_path, unsigned int flags)
     rename_children(found);
 
     archive_entry_set_ctime(found->entry,time(NULL),0);
+
+    return 0;
+}
+
+int btrdt_open(const char* path, struct fuse_file_info *fi){
+    
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+    
+    fi->fh = -1;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    if(!(fi->flags & O_WRONLY) && !(fi->flags & O_RDWR)){
+        return 0;
+    }
+
+    move_to_disk(found,fs_data->archive_fd);
+
+    fi->fh = open(found->tempf_name,fi->flags);
+    if(fi->fh == -1)
+        return -errno;
+
+    return 0;
+}
+int btrdt_release(const char* path, struct fuse_file_info *fi){
+
+    btrdt_data* fs_data = fuse_get_context()->private_data;
+
+    node* found = find_node(fs_data->root,path);
+    if(found == NULL){
+        return -ENOENT;
+    }
+
+    if(found->tempf_name != NULL && fi->fh != -1){
+        close(fi->fh);
+    }
 
     return 0;
 }

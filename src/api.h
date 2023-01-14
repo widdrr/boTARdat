@@ -65,3 +65,8 @@ int btrdt_truncate(const char *path, off_t size, struct fuse_file_info *fi);
 //operation that renames file or directory
 int btrdt_rename(const char *old_path, const char *new_path, unsigned int flags);
 
+//operation opens and saves the fh with the given permissions if it's on disk
+int btrdt_open(const char* path, struct fuse_file_info *fi);
+
+//operation releases a previously opened fh
+int btrdt_release(const char* path, struct fuse_file_info *fi);

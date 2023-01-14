@@ -21,6 +21,8 @@ static const struct fuse_operations btrdt_op ={
     .rmdir = btrdt_rmdir,
     .truncate = btrdt_truncate,
     .rename = btrdt_rename,
+    .open = btrdt_open,
+    .release = btrdt_release,
 };
 
 //argument parsing function
