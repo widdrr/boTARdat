@@ -41,6 +41,11 @@ static int btrdt_opt_proc(void *data, const char *arg, int key, struct fuse_args
             
             fs_data->archive_name = strdup(arg);
             fs_data->archive_fd = open(arg,O_RDONLY);
+            if(fs_data->archive_fd < 0){
+                errno = ENOENT;
+                fprintf(stderr,"archive %s not found\n",arg);
+                exit(EXIT_FAILURE);
+            }
             return 0;
         }
         //second argument should be the mount directory
