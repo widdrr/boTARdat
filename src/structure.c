@@ -289,6 +289,7 @@ int save(node* root, int old_fd, char* name){
     strncpy(old_name, name, strlen(name));
     strcat(old_name,".old");
     rename(name,old_name);
+    free(old_name);
 
     //TO DO... handle exceptions here
     //creates a new archive with the original name
