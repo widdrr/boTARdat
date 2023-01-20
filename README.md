@@ -2,6 +2,10 @@
 -----
 basic opensource TAR directory access tool
 -----
+Dependencies:
+- libarchive
+- libfuse (FUSE 3)
+-----
 ## TODO:
 - Choosing libraries
   - [x] Find a hash library (uthash)
